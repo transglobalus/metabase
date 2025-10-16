@@ -1,0 +1,60 @@
+version: "3.1"
+
+services:
+  # Metabase 主程式服務
+  metabase:
+    image: metabase/metabase:latest
+    container_name: metabase_poc
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      # --- 連接到下方 PostgreSQL 資料庫的設定 ---
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: metabaseappdb
+      MB_DB_PORT: 5432
+      MB_DB_USER: pocuser
+      MB_DB_PASS: demopassword # 記得換成一個安全的密碼
+      MB_DB_HOST: postgres_db # 這是下方 PostgreSQL 服務的名稱
+    depends_on:
+      - postgres_db # 確保 PostgreSQL 服務先啟動
+    networks:
+      - internal
+
+  # 專門給 Metabase 儲存設定用的 PostgreSQL 資料庫
+  postgres_db:
+    image: postgres:latest
+    container_name: metabase_db_poc
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: pocuser
+      POSTGRES_DB: metabaseappdb
+      POSTGRES_PASSWORD: demopassword # 密碼必須跟上面 MB_DB_PASS 一致
+    volumes:
+      - metabase_data:/var/lib/postgresql/data # 將資料庫資料持久化儲存
+    networks:
+      - internal
+
+  # MongoDB 資料庫 (使用 ARM 相容版本)
+  mongodb:
+    image: mongo:4.4.18
+    container_name: mongodb
+    restart: always
+    ports:
+      - "27017:27017" # 將 MongoDB 的 27017 port 開放給本機，方便我們手動加資料
+    volumes:
+      - ./mongo-data:/data/db # 將 DB 資料存放在本機，避免容器移除後資料遺失
+    environment:
+      # 設定 MongoDB 的管理者帳號密碼
+      MONGO_INITDB_ROOT_USERNAME: pocuser
+      MONGO_INITDB_ROOT_PASSWORD: demopassword
+    networks:
+      - internal
+volumes:
+  metabase_data:
+
+networks:
+  internal:
+    driver: bridge
